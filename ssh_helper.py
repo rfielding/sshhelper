@@ -59,7 +59,7 @@ while True:
 
     commands = get_commands_from_prompt(prompt)
     if commands:
-        print("{username}@{hostname}:{port}:")
+        print(f"{username}@{hostname}:{port}:")
         for cmd in commands:
             print(cmd)
         confirmation = input("Continue? [Y/Enter/n]: ").strip().lower()
