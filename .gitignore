@@ -1,0 +1,33 @@
+# Exclude the run script to prevent accidental check-in of credentials
+run_ssh_helper.sh
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Environment and IDE files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VSCode settings directory
+.vscode/
+
+# macOS files
+.DS_Store
+
+# Log files
+*.log
+
+# Other system files
+Thumbs.db
+
