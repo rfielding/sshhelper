@@ -14,11 +14,19 @@ import (
 
 const apiURL = "https://api.openai.com/v1/chat/completions"
 
+type OpenAIMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type OpenAIRequest struct {
+	Model    string          `json:"model"`
+	Messages []OpenAIMessage `json:"messages"`
+}
+
 type OpenAIResponse struct {
 	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
+		Message OpenAIMessage `json:"message"`
 	} `json:"choices"`
 }
 
@@ -40,6 +48,7 @@ func main() {
 	}
 
 	client := resty.New()
+	var conversation []OpenAIMessage
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -55,7 +64,9 @@ func main() {
 			break
 		}
 
-		scriptContent, err := getCommandsFromPrompt(client, apiKey, prompt)
+		conversation = append(conversation, OpenAIMessage{Role: "user", Content: prompt})
+
+		scriptContent, err := getCommandsFromPrompt(client, apiKey, conversation)
 		if err != nil {
 			log.Printf("Error getting commands from prompt: %v\n", err)
 			continue
@@ -92,12 +103,15 @@ func main() {
 	}
 }
 
-func getCommandsFromPrompt(client *resty.Client, apiKey, prompt string) ([]string, error) {
-	requestBody := map[string]interface{}{
-		"model": "gpt-3.5-turbo",
-		"messages": []map[string]string{
-			{"role": "user", "content": fmt.Sprintf("Translate the following prompt into a valid bash script that assumes the current directory ('.') if no directory is specified. Only include the bash commands, and ensure there is no commentary or placeholders that need editing: %s", prompt)},
-		},
+func getCommandsFromPrompt(client *resty.Client, apiKey string, conversation []OpenAIMessage) ([]string, error) {
+	conversation = append(conversation, OpenAIMessage{
+		Role:    "system",
+		Content: "Translate the following prompt into an executable bash script enclosed within triple backticks. Ensure the script requires no editing or parameters.",
+	})
+
+	requestBody := OpenAIRequest{
+		Model:    "gpt-3.5-turbo",
+		Messages: conversation,
 	}
 
 	var response OpenAIResponse
@@ -117,6 +131,7 @@ func getCommandsFromPrompt(client *resty.Client, apiKey, prompt string) ([]strin
 	}
 
 	command := response.Choices[0].Message.Content
+	conversation = append(conversation, response.Choices[0].Message)
 	scriptContent := extractScriptContent(command)
 
 	return scriptContent, nil
@@ -133,7 +148,7 @@ func extractScriptContent(command string) []string {
 			capture = !capture
 			continue
 		}
-		if capture || line != "" {
+		if capture {
 			scriptContent = append(scriptContent, line)
 		}
 	}
