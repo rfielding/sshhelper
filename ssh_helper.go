@@ -88,6 +88,7 @@ func main() {
 			}
 
 			if len(scriptContent) > 0 {
+/*
 				fmt.Println("The following script will be created and executed on the remote system:")
 				for _, line := range scriptContent {
 					fmt.Println(line)
@@ -99,8 +100,10 @@ func main() {
 				}
 				confirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
 				if confirmation == "" || confirmation == "y" || confirmation == "yes" {
-					localScriptPath := "/tmp/remote_script.sh"
-					remoteScriptPath := "/tmp/remote_script.sh"
+*/
+				if true {
+					localScriptPath := "/tmp/remote_script"
+					remoteScriptPath := "/tmp/remote_script"
 					if err := createLocalScript(scriptContent, localScriptPath, currentDirectory, envVars); err != nil {
 						log.Printf("Error creating local script: %v\n", err)
 						continue
@@ -152,7 +155,7 @@ func talkToAssistant(client *resty.Client, apiKey string, conversation []OpenAIM
 func getCommandsFromPrompt(client *resty.Client, apiKey string, conversation []OpenAIMessage, currentDirectory string, envVars map[string]string) ([]string, error) {
 	conversation = append(conversation, OpenAIMessage{
 		Role:    "system",
-		Content: "Translate the following prompt into an executable bash script enclosed within triple backticks. Ensure the script requires no editing or parameters and includes fully qualified paths. The current working directory is " + currentDirectory + ".",
+		Content: "Translate prompts into an executable script enclosed within triple backticks at beginning of a line, followed by language name, like github markdown. Python3 and bash are acceptable choices. Ensure that the script requires no editing before being run. In particular, made-up paths like /path/to cannot work, and should default to current directory in such cases. /tmp/remote_script can be in python3 or bash. Scripts always need a shebang at the top. The current working directory is " + currentDirectory + ".",
 	})
 
 	requestBody := OpenAIRequest{
