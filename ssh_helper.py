@@ -23,7 +23,7 @@ def get_commands_from_prompt(prompt):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "user", "content": f"Translate to a bash command pipeline that is ready to execute literally: {prompt}"}
+            {"role": "user", "content": f"Translate the following prompt into a valid bash script that assumes the current directory ('.') if no directory is specified. Only include the bash commands, and ensure there is no commentary or placeholders that need editing: {prompt}"}
         ]
     )
 
@@ -33,52 +33,68 @@ def get_commands_from_prompt(prompt):
     # Extract the command part from the response
     command = response['choices'][0]['message']['content']
     print("Extracted Command Content:", command)  # Debug: Print the extracted command content
-    command_lines = command.splitlines()
-    commands = []
+
+    # Capture the script content within the triple backticks
+    script_content = []
     capture = False
 
-    for line in command_lines:
+    for line in command.splitlines():
         line = line.strip()
         if line.startswith("```"):
             capture = not capture
             continue
-        if capture or (not any(line.startswith(prefix) for prefix in ["The translation", "The bash command", "Translation", "In bash", "```"])):
-            commands.append(line)
+        if capture:
+            script_content.append(line)
+        elif line:  # Include valid command lines even if they are outside of triple backticks
+            script_content.append(line)
 
-    # Filter out empty lines and non-command text
-    commands = [cmd for cmd in commands if cmd and not cmd.startswith(('The translation', 'Translation', 'In bash'))]
+    # Filter out any empty lines
+    script_content = [cmd for cmd in script_content if cmd]
 
-    print("Captured Commands:", commands)  # Debug: Print the captured commands
-    return commands
+    print("Captured Script Content:", script_content)  # Debug: Print the captured script content
+    return script_content
+
+def create_local_script(script_content, script_path):
+    with open(script_path, 'w') as script_file:
+        script_file.write('\n'.join(script_content))
+    os.chmod(script_path, 0o755)  # Make the script executable
 
 while True:
-    prompt = input("OpenAI> ")
+    prompt = input("Enter your command, English prompt, or type 'exit' to quit: ")
     if prompt.lower() == 'exit':
         print("Exiting...")
         break
 
-    commands = get_commands_from_prompt(prompt)
-    if commands:
-        print(f"{username}@{hostname}:{port}:")
-        for cmd in commands:
-            print(cmd)
-        confirmation = input("Continue? [Y/Enter/n]: ").strip().lower()
+    script_content = get_commands_from_prompt(prompt)
+    if script_content:
+        print("The following script will be created and executed on the remote system:")
+        for line in script_content:
+            print(line)
+        confirmation = input("Do you want to proceed? [Y/n]: ").strip().lower()
         if confirmation in ['', 'y', 'yes']:
-            for command in commands:
-                try:
-                    ssh_command = f"ssh -i {key_path} -p {port} {username}@{hostname} {shlex.quote(command)}"
-                    process = subprocess.Popen(shlex.split(ssh_command), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                    stdout, stderr = process.communicate()
-                    if stdout:
-                        print("Output:\n", stdout)
-                    if stderr:
-                        print("Error:\n", stderr)
-                except subprocess.CalledProcessError as e:
-                    print(f"Error: {e.stderr}")
-                except Exception as e:
-                    print(f"Exception: {str(e)}")
+            local_script_path = '/tmp/remote_script.sh'
+            remote_script_path = '/tmp/remote_script.sh'
+            create_local_script(script_content, local_script_path)
+
+            try:
+                # SCP the script to the remote system
+                scp_command = f"scp -i {key_path} -P {port} {local_script_path} {username}@{hostname}:{remote_script_path}"
+                subprocess.run(shlex.split(scp_command), check=True)
+
+                # SSH to the remote system and execute the script
+                ssh_command = f"ssh -i {key_path} -p {port} {username}@{hostname} {shlex.quote(f'bash {remote_script_path}')}"
+                process = subprocess.Popen(shlex.split(ssh_command), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                stdout, stderr = process.communicate()
+                if stdout:
+                    print("Output:\n", stdout)
+                if stderr:
+                    print("Error:\n", stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"Error: {e.stderr}")
+            except Exception as e:
+                print(f"Exception: {str(e)}")
         else:
             print("Operation cancelled.")
     else:
-        print("Error: Could not extract command from API response")
+        print("Error: Could not extract script from API response")
 
