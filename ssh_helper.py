@@ -3,6 +3,7 @@
 import paramiko
 import openai
 import os
+import argparse
 
 # Get OpenAI API key from environment variable
 api_key = os.environ.get("OPENAI_API_KEY")
@@ -72,12 +73,15 @@ class SSHHelper:
         self.ssh_client.close()
 
 def main():
-    ec2_hostname = "ec2-54-205-159-153.compute-1.amazonaws.com"
-    ec2_port = 22
-    ec2_username = "ubuntu"
-    ec2_key_path = "/home/rfielding/.ssh/sshhelper.pem"  # Absolute path to the key file
+    parser = argparse.ArgumentParser(description='SSH Helper to interact with an EC2 instance')
+    parser.add_argument('--hostname', required=True, help='EC2 hostname')
+    parser.add_argument('--port', required=True, type=int, help='EC2 port')
+    parser.add_argument('--username', required=True, help='EC2 username')
+    parser.add_argument('--key_path', required=True, help='Path to the SSH private key file')
 
-    ssh_helper = SSHHelper(ec2_hostname, ec2_port, ec2_username, ec2_key_path)
+    args = parser.parse_args()
+
+    ssh_helper = SSHHelper(args.hostname, args.port, args.username, args.key_path)
     ssh_helper.connect()
 
     while True:
