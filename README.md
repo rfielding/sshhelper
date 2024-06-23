@@ -31,4 +31,51 @@ This should be enough information to do your own bash script with some name like
 ssh -i /home/rfielding/.ssh/sshhelper.pem ubuntu@ec2-23-25-193-13.compute-1.amazonaws.com -P 22
 ```
 
-That ridiculous hostname is just an EC2-ism. You will need the ssh key and hostname to know how to login. If you can login and do a simple `ls` command, then you are ready to go.	
+That ridiculous hostname is just an EC2-ism. You will need the ssh key and hostname to know how to login. If you can login and do a simple `ls` command, then you are ready to go.
+
+Example
+===========
+
+
+```
+ ./run_ssh_helper.sh 
+OpenAI> are there any braille related projects somewhere under this directory?
+API Response: {
+  "id": "chatcmpl-9d8cnm1ehVPsXZZV5YI1vjRiH7cyK",
+  "object": "chat.completion",
+  "created": 1719114973,
+  "model": "gpt-3.5-turbo-0125",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "grep -r \"braille\" ."
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 8,
+    "total_tokens": 40
+  },
+  "system_fingerprint": null
+}
+Extracted Command Content: grep -r "braille" .
+Captured Commands: ['grep -r "braille" .']
+ubuntu@ec2-54-205-159-153.compute-1.amazonaws.com:22:
+grep -r "braille" .
+Continue? [Y/Enter/n]: 
+Output:
+ ./github.com/rfielding/mf/ff/create_brl_font.py:font.fontname = "asciibraille"
+./github.com/rfielding/mf/ff/create_brl_font.py:def draw_braille_cell(pen, dots):
+./github.com/rfielding/mf/ff/create_brl_font.py:    draw_braille_cell(pen, dots)
+./github.com/rfielding/mf/ff/create_brl_font.py:    font.generate("asciibraille.ttf")
+...
+```
+			
+
+
+	
