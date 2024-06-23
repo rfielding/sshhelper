@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -40,10 +41,14 @@ func main() {
 
 	client := resty.New()
 
+	scanner := bufio.NewScanner(os.Stdin)
+
 	for {
 		fmt.Print("Enter your command, English prompt, or type 'exit' to quit: ")
-		var prompt string
-		fmt.Scanln(&prompt)
+		if !scanner.Scan() {
+			break
+		}
+		prompt := scanner.Text()
 
 		if strings.ToLower(prompt) == "exit" {
 			fmt.Println("Exiting...")
@@ -63,9 +68,10 @@ func main() {
 			}
 
 			fmt.Print("Do you want to proceed? [Y/n]: ")
-			var confirmation string
-			fmt.Scanln(&confirmation)
-			confirmation = strings.ToLower(strings.TrimSpace(confirmation))
+			if !scanner.Scan() {
+				break
+			}
+			confirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
 			if confirmation == "" || confirmation == "y" || confirmation == "yes" {
 				localScriptPath := "/tmp/remote_script.sh"
 				remoteScriptPath := "/tmp/remote_script.sh"
