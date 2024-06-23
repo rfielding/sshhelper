@@ -23,7 +23,7 @@ def get_assistance(prompt):
             ]
         )
         print(f"API Response: {response}")
-        return response['choices'][0]['message']['content'].strip()
+        return response.choices[0].message["content"].strip()
     except Exception as e:
         print(f"Error calling OpenAI API: {e}")
         return "Error getting assistance"
