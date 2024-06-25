@@ -95,12 +95,12 @@ func main() {
 						continue
 					}
 
-					output, err := executeRemoteScript(*hostname, *port, *username, *keyPath, localScriptPath, remoteScriptPath)
+					output, err := executeRemoteScript(*hostname, *port, *username, *keyPath, localScriptPath, remoteScriptPath, currentDirectory)
 					if err != nil {
 						log.Printf("Error executing remote script: %v\n", err)
 					} else {
 						fmt.Println("Output:\n", output)
-						analyzeAndDescribeOutput(client, apiKey, output)
+						analyzeAndDescribeOutput(client, apiKey, strings.Join(scriptContent, "\n"), output)
 						// Update current directory and environment variables based on the script
 						updateState(scriptContent, &currentDirectory, envVars)
 					}
@@ -207,13 +207,13 @@ func createLocalScript(scriptContent []string, scriptPath, currentDirectory stri
 	return nil
 }
 
-func executeRemoteScript(hostname string, port int, username, keyPath, localScriptPath, remoteScriptPath string) (string, error) {
+func executeRemoteScript(hostname string, port int, username, keyPath, localScriptPath, remoteScriptPath, currentDirectory string) (string, error) {
 	scpCmd := exec.Command("scp", "-i", keyPath, "-P", fmt.Sprintf("%d", port), localScriptPath, fmt.Sprintf("%s@%s:%s", username, hostname, remoteScriptPath))
 	if output, err := scpCmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("error copying script to remote: %s, output: %s", err, string(output))
 	}
 
-	sshCmd := exec.Command("ssh", "-i", keyPath, "-p", fmt.Sprintf("%d", port), fmt.Sprintf("%s@%s", username, hostname), fmt.Sprintf("bash %s", remoteScriptPath))
+	sshCmd := exec.Command("ssh", "-i", keyPath, "-p", fmt.Sprintf("%d", port), fmt.Sprintf("%s@%s", username, hostname), fmt.Sprintf("cd %s && bash %s", currentDirectory, remoteScriptPath))
 	sshOutput, err := sshCmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("error executing remote script: %s, output: %s", err, string(sshOutput))
@@ -237,15 +237,15 @@ func updateState(scriptContent []string, currentDirectory *string, envVars map[s
 			parts := strings.SplitN(strings.TrimPrefix(line, "export "), "=", 2)
 			if len(parts) == 2 {
 				envVars[parts[0]] = parts[1]
-			}
+				}
 		}
 	}
 }
 
-func analyzeAndDescribeOutput(client *resty.Client, apiKey, output string) {
+func analyzeAndDescribeOutput(client *resty.Client, apiKey, script, output string) {
 	conversation := []OpenAIMessage{
-			{Role: "system", Content: "Analyze and describe the following output."},
-			{Role: "user", Content: output},
+		{Role: "system", Content: "Analyze and describe the following script and its output."},
+		{Role: "user", Content: fmt.Sprintf("Script:\n```bash\n%s\n```\nOutput:\n```bash\n%s\n```", script, output)},
 	}
 	requestBody := OpenAIRequest{
 		Model:    "gpt-3.5-turbo",
