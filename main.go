@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/go-resty/resty/v2"
 )
 
 const apiURL = "https://api.openai.com/v1/chat/completions"
@@ -56,7 +55,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
-		fmt.Print("Chat> ")
+		fmt.Printf("%s@%s:%d> ", *username, *hostname, *port)
 		if !scanner.Scan() {
 			break
 		}
@@ -88,19 +87,6 @@ func main() {
 			}
 
 			if len(scriptContent) > 0 {
-				/*
-					fmt.Println("The following script will be created and executed on the remote system:")
-					for _, line := range scriptContent {
-						fmt.Println(line)
-					}
-
-					fmt.Print("Do you want to proceed? [Y/n]: ")
-					if !scanner.Scan() {
-						break
-					}
-					confirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
-					if confirmation == "" || confirmation == "y" || confirmation == "yes" {
-				*/
 				if true {
 					localScriptPath := "/tmp/remote_script"
 					remoteScriptPath := "/tmp/remote_script"
@@ -114,6 +100,7 @@ func main() {
 						log.Printf("Error executing remote script: %v\n", err)
 					} else {
 						fmt.Println("Output:\n", output)
+						analyzeAndDescribeOutput(client, apiKey, output)
 						// Update current directory and environment variables based on the script
 						updateState(scriptContent, &currentDirectory, envVars)
 					}
@@ -254,3 +241,36 @@ func updateState(scriptContent []string, currentDirectory *string, envVars map[s
 		}
 	}
 }
+
+func analyzeAndDescribeOutput(client *resty.Client, apiKey, output string) {
+	conversation := []OpenAIMessage{
+			{Role: "system", Content: "Analyze and describe the following output."},
+			{Role: "user", Content: output},
+	}
+	requestBody := OpenAIRequest{
+		Model:    "gpt-3.5-turbo",
+		Messages: conversation,
+	}
+
+	var response OpenAIResponse
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", apiKey)).
+		SetBody(requestBody).
+		SetResult(&response).
+		Post(apiURL)
+
+	if err != nil {
+		log.Printf("Error analyzing output: %v\n", err)
+		return
+	}
+
+	if resp.IsError() {
+		log.Printf("API request failed with status: %s", resp.Status())
+		return
+	}
+
+	description := response.Choices[0].Message.Content
+	fmt.Println("Analysis:\n", description)
+}
+
