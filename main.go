@@ -88,19 +88,19 @@ func main() {
 			}
 
 			if len(scriptContent) > 0 {
-/*
-				fmt.Println("The following script will be created and executed on the remote system:")
-				for _, line := range scriptContent {
-					fmt.Println(line)
-				}
+				/*
+					fmt.Println("The following script will be created and executed on the remote system:")
+					for _, line := range scriptContent {
+						fmt.Println(line)
+					}
 
-				fmt.Print("Do you want to proceed? [Y/n]: ")
-				if !scanner.Scan() {
-					break
-				}
-				confirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
-				if confirmation == "" || confirmation == "y" || confirmation == "yes" {
-*/
+					fmt.Print("Do you want to proceed? [Y/n]: ")
+					if !scanner.Scan() {
+						break
+					}
+					confirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
+					if confirmation == "" || confirmation == "y" || confirmation == "yes" {
+				*/
 				if true {
 					localScriptPath := "/tmp/remote_script"
 					remoteScriptPath := "/tmp/remote_script"
@@ -254,4 +254,3 @@ func updateState(scriptContent []string, currentDirectory *string, envVars map[s
 		}
 	}
 }
-
