@@ -30,6 +30,8 @@ type OpenAIResponse struct {
 	} `json:"choices"`
 }
 
+var apiKey string
+
 func main() {
 	// Set up argument parsing
 	hostname := flag.String("hostname", "", "The SSH hostname")
@@ -42,7 +44,7 @@ func main() {
 		log.Fatal("hostname, port, username, and key_path are required")
 	}
 
-	apiKey := os.Getenv("OPENAI_API_KEY")
+	apiKey = os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		log.Fatal("Please set OPENAI_API_KEY environment variable")
 	}
@@ -142,7 +144,7 @@ func talkToAssistant(client *resty.Client, apiKey string, conversation []OpenAIM
 func getCommandsFromPrompt(client *resty.Client, apiKey string, conversation []OpenAIMessage, currentDirectory string, envVars map[string]string) ([]string, error) {
 	conversation = append(conversation, OpenAIMessage{
 		Role:    "system",
-		Content: "Translate prompts into an executable script enclosed within triple backticks at beginning of a line, followed by language name, like github markdown. Python3 and bash are acceptable choices. Ensure that the script requires no editing before being run. In particular, made-up paths like /path/to cannot work, and should default to current directory in such cases. /tmp/remote_script can be in python3 or bash. Scripts always need a shebang at the top. The current working directory is " + currentDirectory + ".",
+		Content: "You have a valid OPENAI_API_KEY passed into your environment. Translate prompts into an executable script enclosed within triple backticks at beginning of a line, followed by language name, like github markdown. Python3 and bash are acceptable choices. Always include a shebang at the top of scripts that say which program executes the script. Ensure that the script requires no editing before being run. In particular, made-up paths like /path/to cannot work, and should default to current directory in such cases. /tmp/remote_script can be in python3 or bash. Scripts always need a shebang at the top. The current working directory is " + currentDirectory + ".",
 	})
 
 	requestBody := OpenAIRequest{
@@ -194,12 +196,6 @@ func extractScriptContent(command string) []string {
 
 func createLocalScript(scriptContent []string, scriptPath, currentDirectory string, envVars map[string]string) error {
 	script := strings.Join(scriptContent, "\n")
-	prepend := ""
-	for key, value := range envVars {
-		prepend += fmt.Sprintf("export %s=\"%s\"\n", key, value)
-	}
-	prepend += fmt.Sprintf("cd %s\n", currentDirectory)
-	script = prepend + script
 
 	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
 		return fmt.Errorf("unable to write script file: %w", err)
@@ -213,7 +209,7 @@ func executeRemoteScript(hostname string, port int, username, keyPath, localScri
 		return "", fmt.Errorf("error copying script to remote: %s, output: %s", err, string(output))
 	}
 
-	sshCmd := exec.Command("ssh", "-i", keyPath, "-p", fmt.Sprintf("%d", port), fmt.Sprintf("%s@%s", username, hostname), fmt.Sprintf("cd %s && bash %s", currentDirectory, remoteScriptPath))
+	sshCmd := exec.Command("ssh", "-i", keyPath, "-p", fmt.Sprintf("%d", port), fmt.Sprintf("%s@%s", username, hostname), fmt.Sprintf("export OPENAI_API_KEY=%s && cd %s && bash %s", apiKey, currentDirectory, remoteScriptPath))
 	sshOutput, err := sshCmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("error executing remote script: %s, output: %s", err, string(sshOutput))
